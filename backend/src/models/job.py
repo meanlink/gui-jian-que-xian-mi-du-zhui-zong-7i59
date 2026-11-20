@@ -6,6 +6,7 @@ class Job(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(160))
     dataset_id: Mapped[int] = mapped_column(ForeignKey('datasets.id'))
+    calculation_id: Mapped[int | None] = mapped_column(ForeignKey('calculations.id'), nullable=True)
     params: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(20), default='queued')
     result: Mapped[dict] = mapped_column(JSON, default=dict)

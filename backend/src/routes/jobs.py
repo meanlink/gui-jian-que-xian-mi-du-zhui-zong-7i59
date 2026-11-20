@@ -13,8 +13,11 @@ def listing(db=Depends(get_db),u=Depends(current_user)):
     return [job_dict(j) for j in db.scalars(select(Job).order_by(Job.id.desc()).limit(100))]
 @router.post('',status_code=201)
 def create(data:JobInput,db=Depends(get_db),u=Depends(can_write)):
-    j=jobs.create(db,data,u); record(db,u.email,'job.create',{'id':j.id,'params':j.params})
-    db.commit(); jobs.enqueue(j.id); return job_dict(j)
+    j,calc,created=jobs.create(db,data,u)
+    record(db,u.email,'job.create',{'id':j.id,'calculation_id':calc.id,'params':j.params,'shared':not created})
+    db.commit()
+    if created: jobs.enqueue(calc.id) # 只有新一轮计算才入队，共用已在队列/执行中的计算不重复排队
+    return job_dict(j)
 @router.get('/{id}')
 def detail(id:int,db=Depends(get_db),u=Depends(current_user)):
     j=db.get(Job,id)

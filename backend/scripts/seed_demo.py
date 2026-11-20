@@ -4,6 +4,7 @@ from src.config.database import Session
 from migrations.initial import migrate
 from src.models import User, Dataset, Job, Report, Delivery, Audit
 from src.services.business import metadata, seed_records, analyze
+from src.services import calculations
 from src.services.reports import deliver
 from src.utils.security import hash_password
 from src.utils.serialization import checksum
@@ -26,7 +27,9 @@ def seed():
             result=analyze(d.records,params)
             json.dumps(result,ensure_ascii=False,allow_nan=False)
             admin=db.scalar(select(User).where(User.role=='admin'))
-            j=Job(name='基线复核 · '+m['name'],dataset_id=d.id,params=params,status='completed',result=result,created_by=admin.id,created_at=time.time()-3600,finished_at=time.time()-3595,approved=True)
+            calc,_=calculations.attach(db,d,params)
+            calc.status='completed';calc.result=result;calc.attempt=1;calc.finished_at=time.time()-3595
+            j=Job(name='基线复核 · '+m['name'],dataset_id=d.id,params=params,status='completed',result=result,created_by=admin.id,created_at=time.time()-3600,finished_at=calc.finished_at,approved=True,calculation_id=calc.id)
             db.add(j);db.flush()
             r=Report(name='每日业务复核简报',job_id=j.id,destination='业务复核组 · 本地收件箱',interval_seconds=86400,next_run=time.time()+86400,enabled=True)
             db.add(r);db.flush();deliver(db,r)
